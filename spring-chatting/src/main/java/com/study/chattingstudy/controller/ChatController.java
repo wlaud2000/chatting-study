@@ -28,7 +28,9 @@ public class ChatController {
      */
     @MessageMapping("/messages")
     public ChatMessageDTO send2(@RequestBody ChatMessageDTO chatMessageDto) {
-        template.convertAndSend("/sub/message", chatMessageDto.getContent());       // 구독중인 모든 사용자에게 메시지를 전달합니다.
+        System.out.println("Received message: " + chatMessageDto.getContent() + " from: " + chatMessageDto.getSender());
+        template.convertAndSend("/sub/message", chatMessageDto);
+        System.out.println("Message sent to subscribers of /sub/message");
         return chatMessageDto;
     }
 }
