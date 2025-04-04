@@ -1,4 +1,4 @@
-package com.study.chattingstudy.domain.member.security.userdetails;
+package com.study.chattingstudy.domain.user.security.userdetails;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;

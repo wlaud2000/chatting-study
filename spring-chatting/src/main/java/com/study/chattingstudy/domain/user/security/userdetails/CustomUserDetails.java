@@ -1,6 +1,6 @@
-package com.study.chattingstudy.domain.member.security.userdetails;
+package com.study.chattingstudy.domain.user.security.userdetails;
 
-import com.study.chattingstudy.domain.member.entity.User;
+import com.study.chattingstudy.domain.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 

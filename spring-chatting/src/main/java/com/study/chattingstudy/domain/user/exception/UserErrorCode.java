@@ -1,4 +1,4 @@
-package com.study.chattingstudy.domain.member.exception;
+package com.study.chattingstudy.domain.user.exception;
 
 import com.study.chattingstudy.global.apiPayload.code.BaseErrorCode;
 import lombok.AllArgsConstructor;

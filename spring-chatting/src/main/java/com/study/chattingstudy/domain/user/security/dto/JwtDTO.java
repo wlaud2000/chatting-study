@@ -1,4 +1,4 @@
-package com.study.chattingstudy.domain.member.security.dto;
+package com.study.chattingstudy.domain.user.security.dto;
 
 import lombok.Builder;
 

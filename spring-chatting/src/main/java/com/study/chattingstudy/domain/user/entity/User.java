@@ -1,6 +1,6 @@
-package com.study.chattingstudy.domain.member.entity;
+package com.study.chattingstudy.domain.user.entity;
 
-import com.study.chattingstudy.domain.member.enums.UserRole;
+import com.study.chattingstudy.domain.user.enums.UserRole;
 import com.study.chattingstudy.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;

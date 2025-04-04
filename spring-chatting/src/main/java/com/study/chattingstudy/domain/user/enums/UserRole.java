@@ -1,4 +1,4 @@
-package com.study.chattingstudy.domain.member.enums;
+package com.study.chattingstudy.domain.user.enums;
 
 public enum UserRole {
     USER,

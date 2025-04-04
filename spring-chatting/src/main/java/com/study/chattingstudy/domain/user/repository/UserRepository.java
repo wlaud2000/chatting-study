@@ -1,6 +1,6 @@
-package com.study.chattingstudy.domain.member.repository;
+package com.study.chattingstudy.domain.user.repository;
 
-import com.study.chattingstudy.domain.member.entity.User;
+import com.study.chattingstudy.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

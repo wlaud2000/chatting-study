@@ -1,6 +1,6 @@
-package com.study.chattingstudy.domain.member.security.config;
+package com.study.chattingstudy.domain.user.security.config;
 
-import com.study.chattingstudy.domain.member.repository.UserRepository;
+import com.study.chattingstudy.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

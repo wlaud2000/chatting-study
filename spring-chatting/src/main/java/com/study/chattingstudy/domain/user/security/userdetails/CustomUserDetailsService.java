@@ -1,7 +1,7 @@
-package com.study.chattingstudy.domain.member.security.userdetails;
+package com.study.chattingstudy.domain.user.security.userdetails;
 
-import com.study.chattingstudy.domain.member.entity.User;
-import com.study.chattingstudy.domain.member.repository.UserRepository;
+import com.study.chattingstudy.domain.user.entity.User;
+import com.study.chattingstudy.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;

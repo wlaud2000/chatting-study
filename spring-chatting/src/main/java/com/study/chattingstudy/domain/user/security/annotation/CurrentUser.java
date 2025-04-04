@@ -1,4 +1,4 @@
-package com.study.chattingstudy.domain.member.security.annotation;
+package com.study.chattingstudy.domain.user.security.annotation;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
