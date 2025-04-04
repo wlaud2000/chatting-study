@@ -1,4 +1,4 @@
-package com.study.chattingstudy.global.config;
+package com.study.chattingstudy.domain.user.security.config;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
