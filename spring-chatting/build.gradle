@@ -38,6 +38,21 @@ dependencies {
 
     // WebSocket
     implementation 'org.springframework.boot:spring-boot-starter-websocket:3.3.2'
+
+    // JPA
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Jwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    implementation 'org.springframework.boot:spring-boot-configuration-processor'
 }
 
 tasks.named('test') {
