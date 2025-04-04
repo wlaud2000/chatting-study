@@ -1,4 +1,4 @@
-package com.study.chattingstudy.dto;
+package com.study.chattingstudy.domain.test.dto;
 
 import lombok.Data;
 

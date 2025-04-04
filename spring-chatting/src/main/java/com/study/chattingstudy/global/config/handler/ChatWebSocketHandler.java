@@ -1,4 +1,4 @@
-package com.study.chattingstudy.config.handler;
+package com.study.chattingstudy.global.config.handler;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
