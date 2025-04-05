@@ -19,6 +19,7 @@ public class UserConverter {
                 .build();
     }
 
+    // SignUpReqDTO -> User
     public static User toUser(UserReqDTO.SignUpReqDTO reqDTO, PasswordEncoder passwordEncoder) {
         return User.builder()
                 .email(reqDTO.email())
@@ -26,6 +27,15 @@ public class UserConverter {
                 .password(passwordEncoder.encode(reqDTO.password()))
                 .roles(UserRole.USER)
                 .deletedAt(null)
+                .build();
+    }
+
+    // User -> UserResponseDTO
+    public static UserResDTO.UserResponseDTO toUserResponseDTO(User user) {
+        return UserResDTO.UserResponseDTO.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .username(user.getUsername())
                 .build();
     }
 }

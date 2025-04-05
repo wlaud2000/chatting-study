@@ -12,4 +12,12 @@ public class UserResDTO {
             LocalDateTime createdAt
     ){
     }
+
+    @Builder
+    public record UserResponseDTO(
+            Long id,
+            String email,
+            String username
+    ){
+    }
 }
