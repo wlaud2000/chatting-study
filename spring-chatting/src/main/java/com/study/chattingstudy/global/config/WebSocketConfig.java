@@ -26,7 +26,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 // 클라이언트에서 웹 소켓 연결을 위해 "ws-stomp"라는 엔드포인트로 연결을 시도하면 ChatWebSocketHandler 클래스에서 이를 처리합니다.
                 .addHandler(chatWebSocketHandler, "/ws-stomp")
                 // 접속 시도하는 모든 도메인 또는 IP에서 WebSocket 연결을 허용합니다.
-                .setAllowedOrigins("*");
+                .setAllowedOrigins("*")
+                .withSockJS();
     }
 
 }
