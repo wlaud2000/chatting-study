@@ -70,7 +70,7 @@ public class ChatCommandService {
                 .orElseThrow(() -> new ChatException(UserErrorCode.USER_NOT_FOUND_404));
 
         // 채팅방 조회
-        ChatRoom chatRoom = chatRoomRepository.findByChatId(reqDTO.chatId())
+        ChatRoom chatRoom = chatRoomRepository.findWithParticipantsByChatId(reqDTO.chatId())
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
         // 사용자가 채팅방 참여자인지 확인
@@ -97,7 +97,7 @@ public class ChatCommandService {
                 userId, reqDTO.chatId(), reqDTO.messageId());
 
         // 채팅방 조회
-        ChatRoom chatRoom = chatRoomRepository.findByChatId(reqDTO.chatId())
+        ChatRoom chatRoom = chatRoomRepository.findWithParticipantsByChatId(reqDTO.chatId())
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
         // 사용자 조회
@@ -130,7 +130,7 @@ public class ChatCommandService {
             int updatedCount = chatMessageRepository.markAllAsReadInChatRoom(chatRoom.getId(), userId);
 
             // 가장 최근 메시지 ID를 마지막 읽은 메시지로 설정
-            chatMessageRepository.findByChatRoomOrderByCreatedAtDesc(chatRoom, PageRequest.of(0, 1))
+            chatMessageRepository.findByChatRoomWithSender(chatRoom, PageRequest.of(0, 1))
                     .stream()
                     .findFirst()
                     .ifPresent(message -> {

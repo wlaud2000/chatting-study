@@ -13,7 +13,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     // 채팅방 ID로 채팅방 찾기
     Optional<ChatRoom> findByChatId(String chatId);
 
-    // 채팅방 유형으로 채팅방 목록 찾기
+    // fetch join으로 참여자와 유저 정보까지 한번에 가져오기
+    @Query("SELECT cr FROM ChatRoom cr " +
+            "LEFT JOIN FETCH cr.participants p " +
+            "LEFT JOIN FETCH p.user " +
+            "WHERE cr.chatId = :chatId")
+    Optional<ChatRoom> findWithParticipantsByChatId(@Param("chatId") String chatId);
 
     // 특정 사용자가 참여한 채팅방 목록 찾기 (중간 테이블 조인)
     @Query("SELECT DISTINCT cr FROM ChatRoom cr JOIN cr.participants p WHERE p.user.id = :userId")

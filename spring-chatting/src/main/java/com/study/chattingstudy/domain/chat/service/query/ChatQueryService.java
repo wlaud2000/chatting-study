@@ -67,7 +67,7 @@ public class ChatQueryService {
             User otherUser = otherParticipant.getUser();
 
             // 마지막 메시지 조회
-            Page<ChatMessage> lastMessages = chatMessageRepository.findByChatRoomOrderByCreatedAtDesc(
+            Page<ChatMessage> lastMessages = chatMessageRepository.findByChatRoomWithSender(
                     chatRoom, PageRequest.of(0, 1));
 
             ChatMessage lastMessage = lastMessages.isEmpty() ? null : lastMessages.getContent().get(0);
@@ -91,7 +91,7 @@ public class ChatQueryService {
                 .orElseThrow(() -> new ChatException(UserErrorCode.USER_NOT_FOUND_404));
 
         // 채팅방 조회
-        ChatRoom chatRoom = chatRoomRepository.findByChatId(chatId)
+        ChatRoom chatRoom = chatRoomRepository.findWithParticipantsByChatId(chatId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
         // 사용자가 채팅방 참여자인지 확인
@@ -105,7 +105,7 @@ public class ChatQueryService {
 
         // 메시지 조회
         Page<ChatMessage> messages;
-        messages = chatMessageRepository.findByChatRoomOrderByCreatedAtDesc(
+        messages = chatMessageRepository.findByChatRoomWithSender(
                 chatRoom, PageRequest.of(0, pageSize));
 
         log.info("조회된 메시지 수: {}", messages.getContent().size());

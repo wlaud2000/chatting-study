@@ -34,7 +34,8 @@ public class SecurityConfig {
             "/api/users/signup",
             "/api/users/login",
             "/ws-stomp/**",  // WebSocket 관련 모든 경로 추가
-            "/ws-stomp/info"  // SockJS의 정보 엔드포인트 추가
+            "/ws-stomp/info", // SockJS의 정보 엔드포인트 추가
+            "/api/chats/**"
     };
 
     @Bean

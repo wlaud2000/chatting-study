@@ -29,16 +29,12 @@ class ChatService {
 
 			// STOMP 클라이언트 생성
 			this.stompClient = new Client({
-				// SockJS를 사용한 WebSocket 연결
+				// SockJS를 사용한 WebSocket 연결 (수정됨)
 				webSocketFactory: () => {
-                    const socket = new SockJS('http://localhost:8081/ws-stomp');
-                    
-                    // 소켓 연결 시 헤더 추가를 위한 이벤트 리스너
-                    socket.onopen = () => {
-                        console.log('WebSocket connected, authorization header will be used in STOMP');
-                    };
-                    
-                    return socket;
+                    // URL에 토큰을 쿼리 파라미터로 추가
+                    const url = `http://localhost:8081/ws-stomp?token=${accessToken}`;
+                    console.log('WebSocket 연결 URL(토큰 포함):', url);
+                    return new SockJS(url);
                 },
 				// Heartbeat 설정
 				heartbeatIncoming: 4000,
@@ -46,7 +42,7 @@ class ChatService {
 				// 재연결 설정 
 				reconnectDelay: 5000,
 				
-                // 연결 헤더에 Authorization 토큰 추가
+                // 연결 헤더에 Authorization 토큰 추가 (STOMP 연결 시 사용)
                 connectHeaders: {
                     'Authorization': `Bearer ${accessToken}`
                 },

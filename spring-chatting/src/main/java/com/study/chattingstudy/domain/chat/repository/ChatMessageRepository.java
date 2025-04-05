@@ -17,7 +17,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     Optional<ChatMessage> findByMessageId(String messageId);
 
     // 특정 채팅방의 메시지 목록 조회
-    Page<ChatMessage> findByChatRoomOrderByCreatedAtDesc(ChatRoom chatRoom, Pageable pageable);
+    // fetch join을 이용해 sender까지 한 번에 가져오기
+    @Query(
+            value = "SELECT m FROM ChatMessage m JOIN FETCH m.sender WHERE m.chatRoom = :chatRoom ORDER BY m.createdAt DESC",
+            countQuery = "SELECT COUNT(m) FROM ChatMessage m WHERE m.chatRoom = :chatRoom"
+    )
+    Page<ChatMessage> findByChatRoomWithSender(@Param("chatRoom") ChatRoom chatRoom, Pageable pageable);
 
     // 특정 채팅방의 모든 메시지를 읽음 상태로 변경 (자신이 보낸 메시지 제외)
     @Modifying

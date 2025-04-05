@@ -7,73 +7,100 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.net.URI;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 /**
- * 텍스트 기반의 WebSocket 메시지를 처리를 수행하는 Handler 입니다.
- *
- * @author : jonghoon
- * @fileName : ChatWebSocketHandler
- * @since : 8/15/24
+ * 채팅방 ID에 따라 WebSocket 세션을 분리 관리하는 Handler
  */
 @Component
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
-    // WebSocket Session들을 관리하는 리스트입니다.
-    private static final ConcurrentHashMap<String, WebSocketSession> clientSession = new ConcurrentHashMap<>();
+    // 채팅방 ID -> (세션 ID -> WebSocketSession)
+    private static final Map<String, Map<String, WebSocketSession>> roomSessions = new ConcurrentHashMap<>();
+
+    // 채팅방 ID를 세션에 저장할 키
+    private static final String CHAT_ROOM_ID = "chatRoomId";
 
     /**
-     * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
-     * - 성공을 하였을 경우 session 값을 추가합니다.
-     *
-     * @param session
-     * @throws Exception
+     * 연결 성공 시 세션에 채팅방 ID 저장 및 해당 방에 세션 추가
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        System.out.println("[+] afterConnectionEstablished :: " + session.getId());
-        clientSession.put(session.getId(), session);
+        String roomId = getRoomIdFromUri(session.getUri());
+
+        if (roomId == null) {
+            session.close(CloseStatus.BAD_DATA);
+            return;
+        }
+
+        session.getAttributes().put(CHAT_ROOM_ID, roomId); // 세션에 채팅방 ID 저장
+
+        roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(session.getId(), session);
+
+        System.out.println("[+] 연결됨 :: 세션ID=" + session.getId() + ", 채팅방ID=" + roomId);
     }
 
     /**
-     * [메시지 전달] 새로운 WebSocket 메시지가 도착했을 때 호출됩니다.
-     * - 전달 받은 메시지를 순회하면서 메시지를 전송합니다.
-     * - message.getPayload()를 통해 메시지가 전달이 됩니다.
-     *
-     * @param session
-     * @param message
-     * @throws Exception
+     * 메시지를 같은 채팅방에 있는 사용자에게만 전송
      */
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        System.out.println("[+] handleTextMessage :: " + session);
-        System.out.println("[+] handleTextMessage :: " + message.getPayload());
+        String roomId = (String) session.getAttributes().get(CHAT_ROOM_ID);
 
-        clientSession.forEach((key, value) -> {
-            System.out.println("key :: " + key + "  value :: " + value);
-            if (!key.equals(session.getId())) {  //같은 아이디가 아니면 메시지를 전달합니다.
+        if (roomId == null) return;
+
+        Map<String, WebSocketSession> sessionsInRoom = roomSessions.get(roomId);
+        if (sessionsInRoom == null) return;
+
+        for (WebSocketSession otherSession : sessionsInRoom.values()) {
+            if (!otherSession.getId().equals(session.getId()) && otherSession.isOpen()) {
                 try {
-                    value.sendMessage(message);
+                    otherSession.sendMessage(message);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-        });
-
+        }
     }
 
     /**
-     * [소켓 종료 및 전송 오류] WebSocket 연결이 어느 쪽에서든 종료되거나 전송 오류가 발생한 후 호출됩니다.
-     * - 종료 및 실패하였을 경우 해당 세션을 제거합니다.
-     *
-     * @param session
-     * @param status
-     * @throws Exception
+     * 연결 종료 시 해당 채팅방의 세션 제거
      */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws IOException {
-        clientSession.remove(session);
-        System.out.println("[+] afterConnectionClosed - Session: " + session.getId() + ", CloseStatus: " + status);
+        String roomId = (String) session.getAttributes().get(CHAT_ROOM_ID);
+
+        if (roomId != null) {
+            Map<String, WebSocketSession> sessionsInRoom = roomSessions.get(roomId);
+            if (sessionsInRoom != null) {
+                sessionsInRoom.remove(session.getId());
+
+                if (sessionsInRoom.isEmpty()) {
+                    roomSessions.remove(roomId);
+                }
+            }
+        }
+
+        System.out.println("[+] 연결 종료 :: 세션ID=" + session.getId() + ", 채팅방ID=" + roomId + ", 상태=" + status);
+    }
+
+    /**
+     * URI에서 채팅방 ID 추출 (예: /ws/chat/{roomId})
+     */
+    private String getRoomIdFromUri(URI uri) {
+        if (uri == null) return null;
+
+        String path = uri.getPath(); // 예: /ws/chat/abc123
+        String[] segments = path.split("/");
+
+        if (segments.length >= 3) {
+            return segments[segments.length - 1]; // 마지막 segment가 roomId
+        }
+
+        return null;
     }
 }
 

@@ -34,39 +34,47 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            // 연결 요청 시 Authorization 헤더에서 토큰 추출
+            // 1. 헤더에서 토큰 추출 시도
             String authorization = accessor.getFirstNativeHeader("Authorization");
-            log.info("WebSocket 연결 시도: Authorization 헤더 존재 = {}", (authorization != null));
+            String token = null;
 
+            // 헤더에서 토큰 추출
             if (authorization != null && authorization.startsWith("Bearer ")) {
-                String token = authorization.substring(7);
+                token = authorization.substring(7);
+                log.info("WebSocket 연결: Authorization 헤더에서 토큰 추출 성공");
+            }
+            // 2. URL 파라미터에서 토큰 추출 시도
+            else {
+                String tokenParam = accessor.getFirstNativeHeader("token");
+                if (tokenParam == null) {
+                    // SockJS 핸드셰이크의 경우 세션 속성에서 토큰 확인
+                    // 이 부분은 SockJS의 첫 번째 핸드셰이크 요청에는 적용되지 않음
+                    log.warn("WebSocket 연결: 헤더나 URL에서 토큰을 찾을 수 없음");
+                } else {
+                    token = tokenParam;
+                    log.info("WebSocket 연결: URL 파라미터에서 토큰 추출 성공");
+                }
+            }
 
+            // 토큰이 추출되었다면 검증 및 인증 진행
+            if (token != null) {
                 try {
-                    // 토큰 유효성 검증
                     jwtUtil.validateToken(token);
-
-                    // 토큰에서 사용자 식별
                     String email = jwtUtil.getEmail(token);
                     log.info("WebSocket 연결 인증 시도: email={}", email);
 
-                    // 사용자 조회
                     User user = userRepository.findByEmail(email)
                             .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
-                    // CustomUserDetails 생성
                     CustomUserDetails userDetails = new CustomUserDetails(user);
-
-                    // 인증 정보 설정 (Spring Security 컨텍스트와 연동)
                     Authentication auth = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
 
                     accessor.setUser(auth);
-                    log.info("WebSocket 연결이 인증되었습니다: userId={}", userDetails.getUserId());
+                    log.info("WebSocket 연결 인증 성공: userId={}", userDetails.getUserId());
                 } catch (Exception e) {
                     log.error("WebSocket 연결 인증 실패: {}", e.getMessage());
                 }
-            } else {
-                log.warn("WebSocket 연결에 유효한 토큰이 없습니다");
             }
         }
 
