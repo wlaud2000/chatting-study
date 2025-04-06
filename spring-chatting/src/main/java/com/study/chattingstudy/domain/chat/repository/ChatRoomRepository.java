@@ -1,6 +1,7 @@
 package com.study.chattingstudy.domain.chat.repository;
 
 import com.study.chattingstudy.domain.chat.entity.ChatRoom;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,14 +21,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             "WHERE cr.chatId = :chatId")
     Optional<ChatRoom> findWithParticipantsByChatId(@Param("chatId") String chatId);
 
-    // 특정 사용자가 참여한 채팅방 목록 찾기 (중간 테이블 조인)
-    @Query("SELECT DISTINCT cr FROM ChatRoom cr JOIN cr.participants p WHERE p.user.id = :userId")
-    List<ChatRoom> findByParticipantId(@Param("userId") Long userId);
+    // 특정 사용자가 참여한 채팅방 목록 찾기 (N+1 문제 해결)
+    @EntityGraph(attributePaths = {"participants", "participants.user"})
+    @Query("SELECT DISTINCT cr FROM ChatRoom cr " +
+            "JOIN cr.participants p " +
+            "WHERE p.user.id = :userId AND cr.type = 'PRIVATE'")
+    List<ChatRoom> findPrivateChatRoomsByUserId(@Param("userId") Long userId);
 
-    // 두 사용자 간의 1:1 채팅방 찾기
-    // 1. 1:1 채팅방 타입인지 확인
-    // 2. 참여자가 정확히 2명인지 확인
-    // 3. 두 명의 사용자가 모두 참여자인지 확인
+    // 두 사용자 간의 1:1 채팅방 찾기 (최적화)
+    @EntityGraph(attributePaths = {"participants", "participants.user"})
     @Query("SELECT cr FROM ChatRoom cr " +
             "WHERE cr.type = 'PRIVATE' " +
             "AND (SELECT COUNT(p) FROM cr.participants p) = 2 " +
