@@ -1,0 +1,38 @@
+
+.text-button {
+    background: none;
+    border: none;
+    color: #4a90e2;
+    cursor: pointer;
+    font-size: inherit;
+    padding: 0;
+    text-decoration: underline;
+  }
+  
+  .text-button:hover {
+    color: #3a7bcc;
+  }
+  
+  .form-footer {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .select-chat-prompt {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #999;
+    font-size: 16px;
+  }
+  
+  .empty-messages {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #999;
+    font-size: 16px;
+  }
