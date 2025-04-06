@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { ChatRoom, Message } from '../types';
 import { createPrivateChat, fetchChatRooms, fetchMessages } from '../api/chatApi';
 import { useAuth } from './AuthContext';
@@ -24,6 +24,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(false);
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
   
+  const newChatRoomSubscribed = useRef<boolean>(false);
+  
   const { isAuthenticated, user } = useAuth();
   const webSocketService = WebSocketService.getInstance();
 
@@ -31,11 +33,38 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (isAuthenticated) {
       refreshChatRooms();
+      
+      // 새 채팅방 알림 구독
+      if (webSocketService.isConnected() && !newChatRoomSubscribed.current) {
+        subscribeToNewChatRooms();
+      }
     } else {
       setChatRooms([]);
       setCurrentChatRoom(null);
       setMessages([]);
+      newChatRoomSubscribed.current = false;
     }
+  }, [isAuthenticated]);
+
+  // WebSocket 연결 상태 확인
+  useEffect(() => {
+    // WebSocket 연결 상태가 변경될 때마다 호출
+    const handleWebSocketChange = () => {
+      if (isAuthenticated && webSocketService.isConnected() && !newChatRoomSubscribed.current) {
+        subscribeToNewChatRooms();
+      }
+    };
+
+    handleWebSocketChange();
+    
+    // WebSocket 연결 상태를 주기적으로 확인
+    const intervalId = setInterval(() => {
+      if (isAuthenticated && webSocketService.isConnected() && !newChatRoomSubscribed.current) {
+        subscribeToNewChatRooms();
+      }
+    }, 3000);
+    
+    return () => clearInterval(intervalId);
   }, [isAuthenticated]);
 
   // 현재 채팅방이 변경될 때 메시지 로드 및 구독
@@ -47,13 +76,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return () => {
-      // 기존 구독 해제
+      // 채팅방 관련 구독만 해제 (새 채팅방 알림 구독은 유지)
       subscriptions.forEach(id => {
-        webSocketService.unsubscribe(id);
+        if (id !== 'new-chat-room-sub') {
+          webSocketService.unsubscribe(id);
+        }
       });
-      setSubscriptions([]);
+      setSubscriptions(prev => prev.filter(id => id === 'new-chat-room-sub'));
     };
   }, [currentChatRoom]);
+
+  // 새 채팅방 알림 구독
+  const subscribeToNewChatRooms = (): void => {
+    if (!webSocketService.isConnected()) {
+      console.log('WebSocket 연결되지 않음. 새 채팅방 알림을 구독할 수 없습니다.');
+      return;
+    }
+
+    console.log('새 채팅방 알림 구독 시작...');
+    
+    // 새 채팅방 알림 구독
+    const subId = webSocketService.subscribe(
+      '/user/sub/chat/rooms/new',
+      (notification) => {
+        console.log('새 채팅방 알림 수신:', notification);
+        // 새 채팅방 알림을 받으면 채팅방 목록 갱신
+        refreshChatRooms();
+      },
+      'new-chat-room-sub'
+    );
+    
+    if (subId) {
+      setSubscriptions(prev => [...prev.filter(id => id !== 'new-chat-room-sub'), subId]);
+      newChatRoomSubscribed.current = true;
+      console.log('새 채팅방 알림 구독 완료:', subId);
+    }
+  };
 
   const refreshChatRooms = async (): Promise<void> => {
     try {
@@ -63,7 +121,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setChatRooms(response.result || []);
       }
     } catch (error) {
-      console.error('Fetch chat rooms error:', error);
+      console.error('채팅방 목록 조회 오류:', error);
       setChatRooms([]);
     } finally {
       setLoading(false);
@@ -82,7 +140,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMessages(sortedMessages);
       }
     } catch (error) {
-      console.error('Fetch messages error:', error);
+      console.error('메시지 조회 오류:', error);
       setMessages([]);
     } finally {
       setLoading(false);
@@ -91,12 +149,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const subscribeToRoom = (chatId: string): void => {
     if (!webSocketService.isConnected()) {
-      console.warn('WebSocket not connected. Unable to subscribe to room.');
+      console.log('WebSocket 연결되지 않음. 채팅방을 구독할 수 없습니다.');
       return;
     }
 
+    // 메시지 구독 ID
+    const messageSubId = `message-${chatId}`;
+    // 읽음 상태 구독 ID
+    const readSubId = `read-${chatId}`;
+    
+    // 기존 구독이 있다면 제거
+    if (subscriptions.includes(messageSubId)) {
+      webSocketService.unsubscribe(messageSubId);
+    }
+    
+    if (subscriptions.includes(readSubId)) {
+      webSocketService.unsubscribe(readSubId);
+    }
+
     // 메시지 구독
-    const messageSubId = webSocketService.subscribe(
+    const newMessageSubId = webSocketService.subscribe(
       `/sub/chat/private/${chatId}`,
       (receivedMessage: Message) => {
         // 중복 메시지 체크
@@ -123,11 +195,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 채팅방 목록을 HTTP 요청 없이 로컬에서 업데이트
         updateChatRoomLocally(chatId, receivedMessage);
       },
-      `message-${chatId}`
+      messageSubId
     );
     
     // 읽음 상태 구독
-    const readSubId = webSocketService.subscribe(
+    const newReadSubId = webSocketService.subscribe(
       `/sub/chat/private/${chatId}/read`,
       () => {
         // 읽음 상태 업데이트
@@ -140,10 +212,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // 채팅방 목록을 HTTP 요청 없이 로컬에서 업데이트
         updateChatRoomReadStatus(chatId);
       },
-      `read-${chatId}`
+      readSubId
     );
     
-    setSubscriptions(prev => [...prev, messageSubId, readSubId]);
+    // 구독 ID 추가
+    if (newMessageSubId) {
+      setSubscriptions(prev => [...prev.filter(id => id !== messageSubId), newMessageSubId]);
+    }
+    
+    if (newReadSubId) {
+      setSubscriptions(prev => [...prev.filter(id => id !== readSubId), newReadSubId]);
+    }
   };
 
   // 새 메시지가 도착했을 때 로컬에서 채팅방 목록 업데이트
@@ -242,7 +321,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return false;
     } catch (error) {
-      console.error('Create chat error:', error);
+      console.error('채팅방 생성 오류:', error);
       return false;
     } finally {
       setLoading(false);

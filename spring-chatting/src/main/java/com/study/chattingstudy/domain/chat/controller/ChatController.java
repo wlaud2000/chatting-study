@@ -28,7 +28,6 @@ public class ChatController {
 
     private final ChatCommandService chatCommandService;
     private final ChatQueryService chatQueryService;
-    private final WebSocketSessionRegistry sessionRegistry;
 
     /**
      * 1:1 채팅방 생성 API (HTTP 방식으로만 지원)

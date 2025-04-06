@@ -82,8 +82,17 @@ export default class WebSocketService {
       console.warn('WebSocket not connected. Unable to subscribe.');
       return '';
     }
-
+  
     const id = subscriptionId || destination;
+    
+    // 이미 해당 ID로 구독 중인지 확인
+    if (this.subscriptions[id]) {
+      console.log(`Already subscribed to ${destination} with ID ${id}`);
+      return id;
+    }
+    
+    console.log(`Subscribing to ${destination} with ID ${id}`);
+    
     try {
       const subscription = this.client.subscribe(destination, (message: IMessage) => {
         try {

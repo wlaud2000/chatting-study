@@ -56,4 +56,14 @@ public class ChatRoomResDTO {
         ) {
         }
     }
+
+    @Builder
+    public record ChatRoomNotificationDTO(
+            String chatId,
+            String type,
+            Long creatorId,
+            String creatorUsername,
+            LocalDateTime createdAt
+    ) {
+    }
 }

@@ -15,9 +15,11 @@ import com.study.chattingstudy.domain.chat.repository.ChatRoomRepository;
 import com.study.chattingstudy.domain.user.entity.User;
 import com.study.chattingstudy.domain.user.exception.UserErrorCode;
 import com.study.chattingstudy.domain.user.repository.UserRepository;
+import com.study.chattingstudy.global.config.handler.WebSocketSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,8 @@ public class ChatCommandService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final WebSocketSessionRegistry sessionRegistry;
 
     /**
      * 1:1 채팅방 생성 또는 조회
@@ -45,16 +49,19 @@ public class ChatCommandService {
         User receiverUser = userRepository.findById(reqDTO.receiverId())
                 .orElseThrow(() -> new ChatException(UserErrorCode.USER_NOT_FOUND_404));
 
-        // 이미 존재하는 1:1 채팅방 확인
+        // 채팅방 생성 또는 조회 후
         ChatRoom chatRoom = chatRoomRepository.findPrivateChatByParticipants(userId, reqDTO.receiverId())
                 .orElseGet(() -> {
                     log.info("새로운 1:1 채팅방 생성: sender={}, receiver={}", userId, reqDTO.receiverId());
-                    // Converter를 사용하여 채팅방 생성
                     ChatRoom newChatRoom = ChatConverter.toPrivateChatRoom(currentUser, receiverUser);
-                    return chatRoomRepository.save(newChatRoom);
+                    ChatRoom savedChatRoom = chatRoomRepository.save(newChatRoom);
+
+                    // 새 채팅방이 생성된 경우 수신자에게 알림 전송
+                    notifyChatRoomCreation(savedChatRoom, currentUser, receiverUser);
+
+                    return savedChatRoom;
                 });
 
-        // Converter를 사용하여 DTO 변환
         return ChatConverter.toChatRoomResDTO(chatRoom);
     }
 
@@ -140,4 +147,28 @@ public class ChatCommandService {
             log.info("채팅방 전체 메시지 읽음 처리 완료: {}개 메시지 업데이트", updatedCount);
         }
     }
+
+    // 알림 전송 메서드 추가
+    private void notifyChatRoomCreation(ChatRoom chatRoom, User creator, User receiver) {
+        // 수신자가 WebSocket에 연결되어 있는지 확인
+        if (sessionRegistry.hasActiveSession(receiver.getId().toString())) {
+            // 알림 DTO 생성
+            ChatRoomResDTO.ChatRoomNotificationDTO notification = ChatRoomResDTO.ChatRoomNotificationDTO.builder()
+                    .chatId(chatRoom.getChatId())
+                    .type(chatRoom.getType().toString())
+                    .creatorId(creator.getId())
+                    .creatorUsername(creator.getUsername())
+                    .createdAt(chatRoom.getCreatedAt())
+                    .build();
+
+            // 수신자에게 WebSocket으로 알림 전송
+            messagingTemplate.convertAndSendToUser(
+                    receiver.getId().toString(),
+                    "/sub/chat/rooms/new",
+                    notification
+            );
+
+            log.info("채팅방 생성 알림 전송: userId={}, chatId={}", receiver.getId(), chatRoom.getChatId());
+        }
+        }
 }

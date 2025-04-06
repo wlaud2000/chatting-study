@@ -2,19 +2,14 @@ package com.study.chattingstudy.domain.chat.controller;
 
 import com.study.chattingstudy.domain.chat.dto.request.ChatReqDTO;
 import com.study.chattingstudy.domain.chat.dto.response.ChatResDTO;
-import com.study.chattingstudy.domain.chat.dto.response.ChatRoomResDTO;
 import com.study.chattingstudy.domain.chat.service.command.ChatCommandService;
-import com.study.chattingstudy.domain.chat.service.query.ChatQueryService;
 import com.study.chattingstudy.domain.user.security.userdetails.CustomUserDetails;
-import com.study.chattingstudy.global.config.handler.WebSocketSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-
-import java.util.List;
 
 @Controller
 @RequiredArgsConstructor

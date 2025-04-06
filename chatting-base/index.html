@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring Boot 채팅 애플리케이션</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- SockJS와 STOMP 클라이언트 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+  <!-- 앱 컨테이너 -->
+  <div class="app-container">
+    <!-- 인증 컨테이너 -->
+    <div id="auth-container" class="auth-container">
+      <h1>채팅 애플리케이션</h1>
+      
+      <!-- 탭 메뉴 -->
+      <div class="tabs">
+        <div class="tab" id="login-tab">로그인</div>
+        <div class="tab" id="signup-tab">회원가입</div>
+      </div>
+      
+      <!-- 로그인 폼 -->
+      <div id="login-form" class="form-container">
+        <input type="email" id="login-email" placeholder="이메일" required>
+        <input type="password" id="login-password" placeholder="비밀번호" required>
+        <button id="login-button">로그인</button>
+        <p id="login-error" class="error-message"></p>
+      </div>
+      
+      <!-- 회원가입 폼 -->
+      <div id="signup-form" class="form-container">
+        <input type="email" id="signup-email" placeholder="이메일" required>
+        <input type="text" id="signup-username" placeholder="사용자명" required>
+        <input type="password" id="signup-password" placeholder="비밀번호" required>
+        <button id="signup-button">회원가입</button>
+        <p id="signup-error" class="error-message"></p>
+        <p id="signup-success" class="success-message"></p>
+      </div>
+    </div>
+    
+    <!-- 채팅 컨테이너 -->
+    <div id="chat-container" class="chat-container hidden">
+      <div class="chat-header">
+        <h2>채팅</h2>
+        <button id="logout-button">로그아웃</button>
+      </div>
+      
+      <div class="chat-content">
+        <!-- 채팅방 목록 -->
+        <div class="chat-rooms">
+          <div class="chat-rooms-header">
+            <h3>채팅방 목록</h3>
+            <button id="new-chat-button">새 채팅</button>
+          </div>
+          <div id="chat-rooms-list" class="chat-rooms-list">
+            <!-- 채팅방 목록이 여기에 동적으로 추가됩니다 -->
+          </div>
+        </div>
+        
+        <!-- 채팅 영역 -->
+        <div class="chat-area">
+          <div id="chat-room-info" class="chat-room-info">
+            <!-- 현재 채팅방 정보가 여기에 표시됩니다 -->
+            <p>채팅방을 선택하거나 새 채팅을 시작하세요.</p>
+          </div>
+          
+          <div id="messages-container" class="messages-container">
+            <!-- 메시지가 여기에 동적으로 추가됩니다 -->
+          </div>
+          
+          <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="메시지를 입력하세요..." disabled>
+            <button id="send-button" disabled>전송</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 새 채팅 모달 -->
+    <div id="new-chat-modal" class="modal hidden">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>새 채팅 시작</h3>
+        <input type="text" id="recipient-email" placeholder="상대방 ID 입력 (숫자)" required>
+        <small class="input-help">백엔드 API 제한으로 인해 상대방의 ID(숫자)를 입력해주세요.</small>
+        <button id="create-chat-button">채팅 시작</button>
+        <p id="create-chat-error" class="error-message"></p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>

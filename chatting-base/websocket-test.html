@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket 연결 테스트</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    .control-panel {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .logs {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      font-family: monospace;
+    }
+    .logs p {
+      margin: 5px 0;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    .warning {
+      color: orange;
+    }
+    .info {
+      color: blue;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px 0;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3a7bcc;
+    }
+    .field {
+      margin-bottom: 10px;
+    }
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .connected {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .disconnected {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebSocket 연결 테스트</h1>
+  
+  <div class="control-panel">
+    <div class="field">
+      <label for="accessToken">액세스 토큰:</label>
+      <input type="text" id="accessToken" placeholder="로컬 스토리지에서 accessToken 복사" />
+    </div>
+    
+    <div class="field">
+      <label for="wsUrl">WebSocket URL:</label>
+      <input type="text" id="wsUrl" value="http://localhost:8081/ws-stomp" />
+    </div>
+    
+    <div class="field">
+      <label for="destination">구독 대상 (Destination):</label>
+      <input type="text" id="destination" value="/sub/chat/private/YOUR_CHAT_ID" />
+    </div>
+    
+    <div class="field">
+      <button id="connectBtn">연결</button>
+      <button id="disconnectBtn">연결 해제</button>
+      <button id="subscribeBtn">구독</button>
+      <button id="getTokenBtn">토큰 가져오기</button>
+      <button id="clearLogs">로그 지우기</button>
+    </div>
+    
+    <div>
+      <span>상태: </span>
+      <span id="connectionStatus" class="status disconnected">연결 안됨</span>
+    </div>
+  </div>
+  
+  <h2>로그</h2>
+  <div class="logs" id="logs"></div>
+  
+  <script>
+    // 요소 참조
+    const accessTokenInput = document.getElementById('accessToken');
+    const wsUrlInput = document.getElementById('wsUrl');
+    const destinationInput = document.getElementById('destination');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+    const getTokenBtn = document.getElementById('getTokenBtn');
+    const clearLogsBtn = document.getElementById('clearLogs');
+    const logsDiv = document.getElementById('logs');
+    const connectionStatus = document.getElementById('connectionStatus');
+    
+    // 상태
+    let stompClient = null;
+    let subscription = null;
+    
+    // 로그 함수
+    function log(message, type = 'info') {
+      const p = document.createElement('p');
+      p.className = type;
+      p.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+      logsDiv.appendChild(p);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+    }
+    
+    // 로컬 스토리지에서 토큰 가져오기
+    getTokenBtn.addEventListener('click', () => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        accessTokenInput.value = token;
+        log('로컬 스토리지에서 토큰을 가져왔습니다.', 'success');
+      } else {
+        log('로컬 스토리지에 토큰이 없습니다.', 'error');
+      }
+    });
+    
+    // 연결
+    connectBtn.addEventListener('click', () => {
+      const token = accessTokenInput.value.trim();
+      const wsUrl = wsUrlInput.value.trim();
+      
+      if (!token) {
+        log('액세스 토큰을 입력해주세요.', 'error');
+        return;
+      }
+      
+      if (!wsUrl) {
+        log('WebSocket URL을 입력해주세요.', 'error');
+        return;
+      }
+      
+      // 기존 연결 종료
+      if (stompClient) {
+        stompClient.disconnect();
+        stompClient = null;
+      }
+      
+      log(`WebSocket 연결 시도 중: ${wsUrl}`);
+      
+      try {
+        // SockJS 연결
+        const socket = new SockJS(wsUrl);
+        
+        // STOMP 클라이언트 생성
+        stompClient = Stomp.over(socket);
+        
+        // 디버그 함수 정의
+        stompClient.debug = (msg) => {
+          log(`STOMP DEBUG: ${msg}`, 'info');
+        };
+        
+        // 헤더 설정
+        const headers = {
+          'Authorization': `Bearer ${token}`
+        };
+        
+        log(`연결 시도 헤더: ${JSON.stringify(headers)}`);
+        
+        // 연결
+        stompClient.connect(
+          headers,
+          (frame) => {
+            log(`WebSocket 연결 성공: ${frame}`, 'success');
+            connectionStatus.textContent = '연결됨';
+            connectionStatus.className = 'status connected';
+            
+            subscribeBtn.disabled = false;
+            disconnectBtn.disabled = false;
+          },
+          (error) => {
+            log(`WebSocket 연결 실패: ${error}`, 'error');
+            connectionStatus.textContent = '연결 실패';
+            connectionStatus.className = 'status disconnected';
+            
+            stompClient = null;
+          }
+        );
+      } catch (error) {
+        log(`예외 발생: ${error.message}`, 'error');
+      }
+    });
+    
+    // 연결 해제
+    disconnectBtn.addEventListener('click', () => {
+      if (!stompClient) {
+        log('연결된 WebSocket이 없습니다.', 'warning');
+        return;
+      }
+      
+      try {
+        stompClient.disconnect(() => {
+          log('WebSocket 연결 해제됨', 'info');
+          connectionStatus.textContent = '연결 안됨';
+          connectionStatus.className = 'status disconnected';
+          
+          stompClient = null;
+          subscription = null;
+        });
+      } catch (error) {
+        log(`연결 해제 중 오류: ${error.message}`, 'error');
+      }
+    });
+    
+    // 구독
+    subscribeBtn.addEventListener('click', () => {
+      if (!stompClient || !stompClient.connected) {
+        log('WebSocket이 연결되지 않았습니다.', 'error');
+        return;
+      }
+      
+      const destination = destinationInput.value.trim();
+      
+      if (!destination) {
+        log('구독 대상을 입력해주세요.', 'error');
+        return;
+      }
+      
+      try {
+        log(`구독 시도: ${destination}`);
+        
+        // 이미 구독 중이면 취소
+        if (subscription) {
+          subscription.unsubscribe();
+          subscription = null;
+        }
+        
+        // 새로 구독
+        subscription = stompClient.subscribe(destination, (message) => {
+          try {
+            const body = JSON.parse(message.body);
+            log(`메시지 수신: ${JSON.stringify(body)}`, 'success');
+          } catch (error) {
+            log(`메시지 수신: ${message.body}`, 'success');
+          }
+        });
+        
+        log(`구독 성공: ${destination}`, 'success');
+      } catch (error) {
+        log(`구독 중 오류: ${error.message}`, 'error');
+      }
+    });
+    
+    // 로그 지우기
+    clearLogsBtn.addEventListener('click', () => {
+      logsDiv.innerHTML = '';
+      log('로그를 지웠습니다.');
+    });
+    
+    // 초기화
+    window.addEventListener('DOMContentLoaded', () => {
+      // 로컬 스토리지에서 토큰 가져오기
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        accessTokenInput.value = token;
+        log('로컬 스토리지에서 토큰을 가져왔습니다.');
+      }
+      
+      // 버튼 상태 업데이트
+      disconnectBtn.disabled = true;
+      subscribeBtn.disabled = true;
+      
+      log('WebSocket 테스트 도구가 준비되었습니다.', 'info');
+    });
+  </script>
+</body>
+</html>
