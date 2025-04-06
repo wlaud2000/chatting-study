@@ -23,8 +23,11 @@ public class WebSocketStompBrokerConfig implements WebSocketMessageBrokerConfigu
      */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // 구독(sub): 클라이언트가 구독할 수 있는 주제 접두사
-        config.enableSimpleBroker("/sub");
+        // 구독(sub): 클라이언트가 구독할 수 있는 주제 접두사 - '/user' 추가
+        config.enableSimpleBroker("/sub", "/user");
+
+        // 사용자 목적지 프리픽스 설정
+        config.setUserDestinationPrefix("/user");
 
         // 발행(pub): 클라이언트가 메시지를 발행할 수 있는 주제 접두사
         config.setApplicationDestinationPrefixes("/pub");
