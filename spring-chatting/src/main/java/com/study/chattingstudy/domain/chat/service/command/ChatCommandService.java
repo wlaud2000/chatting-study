@@ -7,7 +7,6 @@ import com.study.chattingstudy.domain.chat.dto.response.ChatRoomResDTO;
 import com.study.chattingstudy.domain.chat.entity.ChatMessage;
 import com.study.chattingstudy.domain.chat.entity.ChatRoom;
 import com.study.chattingstudy.domain.chat.entity.ChatRoomParticipant;
-import com.study.chattingstudy.domain.chat.enums.ChatType;
 import com.study.chattingstudy.domain.chat.exception.ChatErrorCode;
 import com.study.chattingstudy.domain.chat.exception.ChatException;
 import com.study.chattingstudy.domain.chat.repository.ChatMessageRepository;

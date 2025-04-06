@@ -14,23 +14,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ChatWebSocketHandler chatWebSocketHandler;
 
-    /**
-     * WebSocket 연결을 위해서 Handler를 구성합니다.
-     *
-     * @param registry
-     */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         System.out.println("[+] 최초 WebSocket 연결을 위한 등록 Handler");
         registry
-                .addHandler(chatWebSocketHandler, "/ws-stomp")
-                .setAllowedOriginPatterns(
-                        "http://localhost:3000",
-                        "http://127.0.0.1:3000",
-                        "http://localhost:5500",
-                        "http://127.0.0.1:5500"
-                )
+                .addHandler(chatWebSocketHandler, "/raw-ws") // 경로 변경
+                .setAllowedOriginPatterns("*") // 모든 오리진 허용
                 .withSockJS();
     }
-
 }
