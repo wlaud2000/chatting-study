@@ -33,28 +33,21 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor != null) {
-            // CONNECT 명령에서만 JWT 인증 수행
-            if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                log.info("WebSocket CONNECT 명령 수신 - JWT 인증 수행");
-                authenticateUser(accessor);
-            }
-            // DISCONNECT 명령 시 세션 제거
-            else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
-                String sessionId = accessor.getSessionId();
-                if (sessionId != null) {
-                    sessionRegistry.removeSession(sessionId);
-                    log.info("WebSocket 연결 종료 - 세션 제거됨: {}", sessionId);
-                }
-            }
-            // 이미 인증된 세션 확인
-            else if (StompCommand.SEND.equals(accessor.getCommand()) ||
-                    StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-                Principal user = accessor.getUser();
-                if (user == null) {
-                    log.warn("인증되지 않은 WebSocket 명령: {}", accessor.getCommand());
-                }
-            }
+        // CONNECT 명령에서만 JWT 인증 수행
+        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+            log.info("WebSocket CONNECT 명령 수신 - JWT 인증 수행");
+            authenticateUser(accessor);
+        }
+        // DISCONNECT 명령 시 세션 제거
+        else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
+            String sessionId = accessor.getSessionId();
+            sessionRegistry.removeSession(sessionId);
+            log.info("WebSocket 연결 종료 - 세션 제거됨: {}", sessionId);
+        }
+        // 이미 인증된 세션 확인
+        else if (StompCommand.SEND.equals(accessor.getCommand()) ||
+                StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            accessor.getUser();
         }
         return message;
     }

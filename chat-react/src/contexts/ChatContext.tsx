@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ChatRoom, Message } from '../types';
-import { createPrivateChat, fetchChatRooms, fetchMessages, markMessagesAsRead } from '../api/chatApi';
+import { createPrivateChat, fetchChatRooms, fetchMessages } from '../api/chatApi';
 import { useAuth } from './AuthContext';
 import WebSocketService from '../services/websocketService';
 
@@ -109,16 +109,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
           
-          // 내가 보낸 메시지가 아니라면 읽음 처리
-          if (user && receivedMessage.senderId !== user.id) {
-            markMessagesAsRead(chatId, receivedMessage.messageId);
+          // 내가 보낸 메시지가 아니라면 읽음 처리 (WebSocket으로만 처리)
+          if (user && receivedMessage.senderId !== user.id && webSocketService.isConnected()) {
+            webSocketService.send('/pub/chat/read', {
+              chatId: chatId,
+              messageId: receivedMessage.messageId
+            });
           }
           
           return newMessages;
         });
         
-        // 채팅방 목록 새로고침
-        refreshChatRooms();
+        // 채팅방 목록을 HTTP 요청 없이 로컬에서 업데이트
+        updateChatRoomLocally(chatId, receivedMessage);
       },
       `message-${chatId}`
     );
@@ -134,13 +137,58 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           )
         );
         
-        // 채팅방 목록 새로고침
-        refreshChatRooms();
+        // 채팅방 목록을 HTTP 요청 없이 로컬에서 업데이트
+        updateChatRoomReadStatus(chatId);
       },
       `read-${chatId}`
     );
     
     setSubscriptions(prev => [...prev, messageSubId, readSubId]);
+  };
+
+  // 새 메시지가 도착했을 때 로컬에서 채팅방 목록 업데이트
+  const updateChatRoomLocally = (chatId: string, receivedMessage: Message): void => {
+    setChatRooms(prevRooms => 
+      prevRooms.map(room => {
+        if (room.chatId === chatId) {
+          // 자신이 보낸 메시지인지 확인
+          const isSentByMe = user && receivedMessage.senderId === user.id;
+          
+          return {
+            ...room,
+            lastMessage: {
+              messageId: receivedMessage.messageId,
+              content: receivedMessage.content,
+              senderId: receivedMessage.senderId,
+              createdAt: receivedMessage.createdAt,
+              read: isSentByMe ? false : true
+            },
+            // 자신이 보낸 메시지면 읽지 않은 메시지 수 유지, 아니면 증가
+            unreadCount: isSentByMe ? room.unreadCount : room.unreadCount + 1
+          };
+        }
+        return room;
+      })
+    );
+  };
+
+  // 읽음 상태가 업데이트되었을 때 로컬에서 채팅방 목록 업데이트
+  const updateChatRoomReadStatus = (chatId: string): void => {
+    setChatRooms(prevRooms => 
+      prevRooms.map(room => {
+        if (room.chatId === chatId && room.lastMessage) {
+          return {
+            ...room,
+            lastMessage: {
+              ...room.lastMessage,
+              read: true
+            },
+            unreadCount: 0 // 읽음 처리되면 안 읽은 메시지 수를 0으로 설정
+          };
+        }
+        return room;
+      })
+    );
   };
 
   const selectChatRoom = (room: ChatRoom): void => {
@@ -160,22 +208,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     webSocketService.send('/pub/chat/private', message);
   };
 
-  const markAllMessagesAsRead = async (chatId: string): Promise<void> => {
-    try {
-      await markMessagesAsRead(chatId);
+  const markAllMessagesAsRead = (chatId: string): void => {
+    // WebSocket을 통해서만 읽음 처리
+    if (webSocketService.isConnected()) {
+      webSocketService.send('/pub/chat/read', {
+        chatId: chatId,
+        messageId: null
+      });
       
-      // WebSocket으로 읽음 상태 업데이트 알림
-      if (webSocketService.isConnected()) {
-        webSocketService.send('/pub/chat/read', {
-          chatId: chatId,
-          messageId: null
-        });
-      }
-      
-      // 채팅방 목록 새로고침
-      refreshChatRooms();
-    } catch (error) {
-      console.error('Mark messages as read error:', error);
+      // 로컬에서 채팅방의 읽지 않은 메시지 수 업데이트
+      updateChatRoomReadStatus(chatId);
     }
   };
 
@@ -185,7 +227,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await createPrivateChat(receiverId);
       
       if (response.isSuccess) {
-        await refreshChatRooms();
+        await refreshChatRooms(); // 채팅방 생성은 HTTP 요청 유지
         
         // 새로 생성된 채팅방 찾기
         const newRoom = chatRooms.find(room => 

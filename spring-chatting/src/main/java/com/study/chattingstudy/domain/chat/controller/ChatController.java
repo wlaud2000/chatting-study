@@ -31,9 +31,7 @@ public class ChatController {
     private final WebSocketSessionRegistry sessionRegistry;
 
     /**
-     * 1:1 채팅방 생성 API
-     * - 새로운 1:1 채팅방을 생성하거나 기존 채팅방을 조회
-     * - 웹소켓 연결이 있으면 웹소켓을 통해 처리
+     * 1:1 채팅방 생성 API (HTTP 방식으로만 지원)
      */
     @PostMapping("/private")
     @Operation(summary = "1:1 채팅방 생성", description = "다른 사용자와의 1:1 채팅방을 생성하거나 기존 채팅방을 반환합니다.")
@@ -43,12 +41,7 @@ public class ChatController {
 
         log.info("HTTP 1:1 채팅방 생성 요청: userId={}, receiverId={}", authUser.getUserId(), reqDTO.receiverId());
 
-        // 웹소켓 세션이 있는지 확인
-        if (sessionRegistry.hasActiveSession(authUser.getUserId().toString())) {
-            log.info("웹소켓 세션 존재. 채팅방 생성은 실시간으로 처리됨");
-        }
-
-        // 모든 경우에 처리 (웹소켓 연결이 없는 경우를 위해)
+        // 채팅방 생성 요청 처리
         ChatRoomResDTO.ChatRoomResponseDTO resDTO =
                 chatCommandService.createOrGetPrivateChat(authUser.getUserId(), reqDTO);
 
@@ -56,44 +49,12 @@ public class ChatController {
     }
 
     /**
-     * 채팅 메시지 읽음 상태 업데이트 API
-     * - 웹소켓 연결이 활성화된 경우 중복 처리 방지
-     */
-    @PostMapping("/{chatId}/read")
-    @Operation(summary = "메시지 읽음 상태 업데이트", description = "특정 채팅방의 메시지를 읽음 상태로 변경합니다.")
-    public CustomResponse<Void> markMessagesAsRead(
-            @CurrentUser CustomUserDetails userDetails,
-            @PathVariable String chatId,
-            @RequestParam(required = false) String messageId) {
-
-        log.info("HTTP 메시지 읽음 상태 업데이트 요청: userId={}, chatId={}, messageId={}",
-                userDetails.getUserId(), chatId, messageId);
-
-        // 웹소켓 세션이 있는지 확인
-        if (sessionRegistry.hasActiveSession(userDetails.getUserId().toString())) {
-            log.info("웹소켓 세션 존재. 읽음 상태는 실시간으로 처리됨");
-            return CustomResponse.onSuccess(HttpStatus.OK, null);
-        }
-
-        // 웹소켓 연결이 없는 경우에만 HTTP로 처리
-        ChatReqDTO.MessageReadReqDTO reqDTO = new ChatReqDTO.MessageReadReqDTO(chatId, messageId);
-        chatCommandService.markMessageAsRead(userDetails.getUserId(), reqDTO);
-
-        return CustomResponse.onSuccess(HttpStatus.OK, null);
-    }
-
-    /**
-     * 1:1 채팅방 목록 조회 API
+     * 채팅방 목록 조회 API (HTTP 방식으로만 지원)
      */
     @GetMapping("/private")
     @Operation(summary = "1:1 채팅방 목록 조회", description = "사용자의 모든 1:1 채팅방 목록을 조회합니다.")
     public CustomResponse<List<ChatRoomResDTO.ChatRoomListResDTO>> getPrivateChats(@CurrentUser AuthUser authUser) {
         log.info("HTTP 1:1 채팅방 목록 조회 요청: userId={}", authUser.getUserId());
-
-        // 웹소켓 세션이 있는지 확인
-        if (sessionRegistry.hasActiveSession(authUser.getUserId().toString())) {
-            log.info("웹소켓 세션 존재. 채팅방 목록은 실시간으로 갱신됨");
-        }
 
         List<ChatRoomResDTO.ChatRoomListResDTO> resDTO =
                 chatQueryService.getUserPrivateChats(authUser.getUserId());
