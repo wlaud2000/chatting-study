@@ -36,4 +36,18 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     // 특정 채팅방의 읽지 않은 메시지 수 조회 (자신이 보낸 메시지 제외)
     @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.chatRoom.id = :chatRoomId AND m.sender.id <> :userId AND m.read = false")
     long countUnreadMessages(@Param("chatRoomId") Long chatRoomId, @Param("userId") Long userId);
+
+    /**
+     * 특정 채팅방의 메시지를 발신자 정보와 함께 페이징하여 조회
+     * @param chatRoom 조회할 채팅방
+     * @param pageable 페이징 정보
+     * @return 채팅 메시지 페이지
+     */
+    @Query("SELECT cm FROM ChatMessage cm JOIN FETCH cm.sender s " +
+            "WHERE cm.chatRoom = :chatRoom " +
+            "ORDER BY cm.createdAt DESC")
+    Page<ChatMessage> findByChatRoomWithSender(
+            @Param("chatRoom") ChatRoom chatRoom,
+            Pageable pageable
+    );
 }

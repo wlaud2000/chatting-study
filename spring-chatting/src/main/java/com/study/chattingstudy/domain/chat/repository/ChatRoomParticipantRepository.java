@@ -24,4 +24,11 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
     // 특정 채팅방의 다른 참여자들 조회(현재 사용자 제회)
     @Query("SELECT p FROM ChatRoomParticipant p WHERE p.chatRoom.id = :chatRoomId AND p.user.id <> :userId")
     List<ChatRoomParticipant> findOtherParticipants(@Param("chatRoomId") Long chatRoomId, @Param("userId") Long userId);
+
+    // NEW: 여러 채팅방의 다른 참여자들 한 번에 조회
+    @Query("SELECT p FROM ChatRoomParticipant p JOIN FETCH p.user " +
+            "WHERE p.chatRoom.id IN :roomIds AND p.user.id <> :userId")
+    List<ChatRoomParticipant> findByRoomIdsAndUserIdNot(
+            @Param("roomIds") List<Long> roomIds,
+            @Param("userId") Long userId);
 }
